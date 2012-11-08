@@ -1,8 +1,8 @@
 {application, amqp_client,
- [{description, "RabbitMQ Erlang Client Library"},
+ [{description, "RabbitMQ AMQP Client"},
   {vsn, "2.8.7"},
   {modules, []},
-  {registered, []},
-  {env, []},
+  {registered, [amqp_sup]},
+  {env, [{prefer_ipv6, false}]},
   {mod, {amqp_client, []}},
   {applications, [kernel, stdlib]}]}.

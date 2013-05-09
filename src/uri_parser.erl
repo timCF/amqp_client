@@ -1,7 +1,7 @@
 %% This file is a copy of http_uri.erl from the R13B-1 Erlang/OTP
 %% distribution with several modifications.
 
-%% All modifications are Copyright (c) 2009-2012 VMware, Ltd.
+%% All modifications are Copyright (c) 2009-2013 VMware, Ltd.
 
 %% ``The contents of this file are subject to the Erlang Public License,
 %% Version 1.1, (the "License"); you may not use this file except in
@@ -41,9 +41,9 @@
 
 parse(AbsURI, Defaults) ->
     case parse_scheme(AbsURI) of
-	{error, Reason} ->
-	    {error, Reason};
-	{Scheme, Rest} ->
+    {error, Reason} ->
+        {error, Reason};
+    {Scheme, Rest} ->
             case (catch parse_uri_rest(Rest, true)) of
                 [_|_] = List ->
                     merge_keylists([{scheme, Scheme} | List], Defaults);
@@ -61,7 +61,7 @@ parse_scheme(AbsURI) ->
 parse_uri_rest("//" ++ URIPart, true) ->
     %% we have an authority
     {Authority, PathQueryFrag} =
-	split_uri(URIPart, "/|\\?|#", {URIPart, ""}, 1, 0),
+    split_uri(URIPart, "/|\\?|#", {URIPart, ""}, 1, 0),
     AuthorityParts = parse_authority(Authority),
     parse_uri_rest(PathQueryFrag, false) ++ AuthorityParts;
 parse_uri_rest(PathQueryFrag, _Bool) ->
@@ -107,11 +107,11 @@ split_uri(UriPart, SplitChar, NoMatchResult) ->
 
 split_uri(UriPart, SplitChar, NoMatchResult, SkipLeft, SkipRight) ->
     case re:run(UriPart, SplitChar) of
-	{match, [{Match, _}]} ->
-	    {string:substr(UriPart, 1, Match + 1 - SkipLeft),
-	     string:substr(UriPart, Match + 1 + SkipRight, length(UriPart))};
-	nomatch ->
-	    NoMatchResult
+    {match, [{Match, _}]} ->
+        {string:substr(UriPart, 1, Match + 1 - SkipLeft),
+         string:substr(UriPart, Match + 1 + SkipRight, length(UriPart))};
+    nomatch ->
+        NoMatchResult
     end.
 
 merge_keylists(A, B) ->

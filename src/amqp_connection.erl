@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2012 VMware, Inc.  All rights reserved.
+%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
 %%
 
 %% @type close_reason(Type) = {shutdown, amqp_reason(Type)}.
@@ -73,6 +73,7 @@
 -export([start/1, close/1, close/2, close/3]).
 -export([error_atom/1]).
 -export([info/2, info_keys/1, info_keys/0]).
+-export([socket_adapter_info/2]).
 
 -define(DEFAULT_CONSUMER, {amqp_selective_consumer, []}).
 
@@ -332,3 +333,8 @@ info_keys(ConnectionPid) ->
 %% atoms that can be used for a certain connection, use info_keys/1.
 info_keys() ->
     amqp_gen_connection:info_keys().
+
+%% @doc Takes a socket and a protocol, returns an #amqp_adapter_info{}
+%% based on the socket for the protocol given.
+socket_adapter_info(Sock, Protocol) ->
+    amqp_direct_connection:socket_adapter_info(Sock, Protocol).

@@ -77,25 +77,22 @@ handle_info({inet_async, Sock, _, {error, Reason}},
             State = #state{sock = Sock}) ->
     handle_error(Reason, State).
     
-handle_data(Data, #state { message = {expecting_header, Old}} = State) ->
-    handle_data(<<Old/binary, Data/binary>>, State#state { message = none });
-handle_data(<<"AMQP", A, B, C>>,
-            #state { sock = Sock, message = none } = State) ->
-    {ok, <<D>>} = rabbit_net:sync_recv(Sock, 1),
-    handle_error({refused, {A, B, C, D}}, State);
+
 handle_data(<<Type:8, Channel:16, Length:32, Payload:Length/binary, ?FRAME_END, More/binary>>,
             #state { message = none } = State) when Type =:= ?FRAME_METHOD; Type =:= ?FRAME_HEADER;
                                                     Type =:= ?FRAME_BODY; Type =:= ?FRAME_HEARTBEAT ->
     %% Optimize for the direct match
-    handle_data(More,
-                process_frame(Type, Channel, Payload, State#state { message = none }));
+    handle_data(More, process_frame(Type, Channel, Payload, State#state { message = none }));
 handle_data(<<Type:8, Channel:16, Length:32, Data/binary>>,
             #state { message = none } = State) when Type =:= ?FRAME_METHOD;
                                                     Type =:= ?FRAME_HEADER;
                                                     Type =:= ?FRAME_BODY;
                                                     Type =:= ?FRAME_HEARTBEAT ->
 	{noreply, State#state { message = {Type, Channel, Length, Data }}};
-handle_data(<<Malformed:7/binary, _Rest/binary>>,
+handle_data(<<"AMQP", A, B, C>>,
+            #state { sock = Sock, message = none } = State) ->
+    {ok, <<D>>} = rabbit_net:sync_recv(Sock, 1),
+    handle_error({refused, {A, B, C, D}}, State);handle_data(<<Malformed:7/binary, _Rest/binary>>,
             #state { message = none } = State) ->
     handle_error({malformed_header, Malformed}, State);
 handle_data(<<Data/binary>>,
@@ -112,6 +109,8 @@ handle_data(NewData,
             %% Read in more data from the socket
             {noreply, State#state { message = {Type, Channel, L, NotEnough} }}
     end;
+handle_data(Data, #state { message = {expecting_header, Old}} = State) ->
+    handle_data(<<Old/binary, Data/binary>>, State#state { message = none });
 handle_data(<<>>, State) -> {noreply, State}.
 
 %%---------------------------------------------------------------------------

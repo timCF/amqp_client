@@ -781,9 +781,9 @@ handle_shutdown(Reason, State) ->
 do(Method, Content, Flow, #state{driver = Driver, writer = W}) ->
     %% Catching because it expects the {channel_exit, _, _} message on error
     catch case {Driver, Content, Flow} of
-              {network, none, _}  -> rabbit_writer:send_command_sync(W, Method);
-              {network, _, _}     -> rabbit_writer:send_command_sync(W, Method,
-                                                                     Content);
+              {network, none, _}  -> rabbit_writer:send_command(W, Method);
+              {network, _, _}     -> rabbit_writer:send_command(W, Method,
+                                                                Content);
               {direct, none, _}   -> rabbit_channel:do(W, Method);
               {direct, _, flow}   -> rabbit_channel:do_flow(W, Method, Content);
               {direct, _, noflow} -> rabbit_channel:do(W, Method, Content)

@@ -10,8 +10,8 @@
 %%
 %% The Original Code is RabbitMQ.
 %%
-%% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
+%% The Initial Developer of the Original Code is GoPivotal, Inc.
+%% Copyright (c) 2007-2013 GoPivotal, Inc.  All rights reserved.
 %%
 
 %% @type close_reason(Type) = {shutdown, amqp_reason(Type)}.
@@ -592,7 +592,7 @@ do_rpc(State = #state{rpc_requests = Q,
                              {_, ok}   -> gen_server:reply(From, ok);
                              _         -> ok
                              %% Do not reply if error in do. Expecting
-                             %% {channel_exit, ...}
+                             %% {channel_exit, _, _}
                          end,
                          do_rpc(State1#state{rpc_requests = NewQ})
             end;

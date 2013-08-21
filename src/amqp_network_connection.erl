@@ -10,8 +10,8 @@
 %%
 %% The Original Code is RabbitMQ.
 %%
-%% The Initial Developer of the Original Code is VMware, Inc.
-%% Copyright (c) 2007-2013 VMware, Inc.  All rights reserved.
+%% The Initial Developer of the Original Code is GoPivotal, Inc.
+%% Copyright (c) 2007-2013 GoPivotal, Inc.  All rights reserved.
 %%
 
 %% @private
@@ -42,8 +42,8 @@
 init([]) ->
     {ok, #state{}}.
 
-open_channel_args(#state{sock = Sock}) ->
-    [Sock].
+open_channel_args(#state{sock = Sock, frame_max = FrameMax}) ->
+    [Sock, FrameMax].
 
 do(#'connection.close_ok'{} = CloseOk, State) ->
     erlang:send_after(?SOCKET_CLOSING_TIMEOUT, self(), socket_closing_timeout),
@@ -52,7 +52,7 @@ do(Method, State) ->
     do2(Method, State).
 
 do2(Method, #state{writer0 = Writer}) ->
-    %% Catching because it expects the {channel_exit, _} message on error
+    %% Catching because it expects the {channel_exit, _, _} message on error
     catch rabbit_writer:send_command_sync(Writer, Method).
 
 handle_message(socket_closing_timeout,
@@ -65,7 +65,7 @@ handle_message(socket_closed, State = #state{waiting_socket_close = false}) ->
     {stop, socket_closed_unexpectedly, State};
 handle_message({socket_error, _} = SocketError, State) ->
     {stop, SocketError, State};
-handle_message({channel_exit, Reason}, State) ->
+handle_message({channel_exit, 0, Reason}, State) ->
     {stop, {channel0_died, Reason}, State};
 handle_message(heartbeat_timeout, State) ->
     {stop, heartbeat_timeout, State};
@@ -274,7 +274,7 @@ client_properties(UserProperties) ->
                {<<"version">>,   longstr, list_to_binary(Vsn)},
                {<<"platform">>,  longstr, <<"Erlang">>},
                {<<"copyright">>, longstr,
-                <<"Copyright (c) 2007-2013 VMware, Inc.">>},
+                <<"Copyright (c) 2007-2013 GoPivotal, Inc.">>},
                {<<"information">>, longstr,
                 <<"Licensed under the MPL.  "
                   "See http://www.rabbitmq.com/">>},
@@ -288,6 +288,8 @@ handshake_recv(Expecting) ->
         {'$gen_cast', {method, Method, none, noflow}} ->
             case {Expecting, element(1, Method)} of
                 {E, M} when E =:= M ->
+                    Method;
+                {'connection.tune', 'connection.secure'} ->
                     Method;
                 {'connection.open_ok', _} ->
                     {closing,

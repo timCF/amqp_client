@@ -254,6 +254,8 @@ handle_info(Info, State = #state{module_state = MState,
     case ConsumerModule:handle_info(Info, MState) of
         {ok, NewMState} ->
             {noreply, State#state{module_state = NewMState}};
+        {error, GracefulReason, NewMState} when GracefulReason == normal; GracefulReason == shutdown ->
+            {stop, normal, State#state {module_state = NewMState}};
         {error, Reason, NewMState} ->
             {stop, {error, Reason}, State#state{module_state = NewMState}}
     end.

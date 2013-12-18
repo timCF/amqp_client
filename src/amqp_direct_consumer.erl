@@ -89,7 +89,11 @@ handle_deliver(M, A, C) ->
 
 %% @private
 handle_info({'DOWN', _MRef, process, C, Info}, C) ->
-    {error, {consumer_died, Info}, C};
+    case Info of
+        normal -> {error, normal, C};
+        shutdown -> {error, shutdown, C};
+        Info -> {error, {consumer_died, Info}, C}
+    end;
 handle_info({'DOWN', MRef, process, Pid, Info}, C) ->
     C ! {'DOWN', MRef, process, Pid, Info},
     {ok, C}.

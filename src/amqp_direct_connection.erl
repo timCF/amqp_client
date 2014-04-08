@@ -11,7 +11,7 @@
 %% The Original Code is RabbitMQ.
 %%
 %% The Initial Developer of the Original Code is GoPivotal, Inc.
-%% Copyright (c) 2007-2013 GoPivotal, Inc.  All rights reserved.
+%% Copyright (c) 2007-2014 GoPivotal, Inc.  All rights reserved.
 %%
 
 %% @private
@@ -23,7 +23,7 @@
 
 -export([server_close/3]).
 
--export([init/1, terminate/2, connect/4, do/2, open_channel_args/1, i/2,
+-export([init/0, terminate/2, connect/4, do/2, open_channel_args/1, i/2,
          info_keys/0, handle_message/2, closing/3, channels_terminated/1]).
 
 -export([socket_adapter_info/2]).
@@ -54,22 +54,21 @@ server_close(ConnectionPid, Code, Text) ->
                                 method_id  = 0},
     amqp_gen_connection:server_close(ConnectionPid, Close).
 
-init([]) ->
+init() ->
     {ok, #state{}}.
 
 open_channel_args(#state{node = Node,
                          user = User,
                          vhost = VHost,
-                         adapter_info = Info,
                          collector = Collector}) ->
-    [self(), Info#amqp_adapter_info.name, Node, User, VHost, Collector].
+    [self(), Node, User, VHost, Collector].
 
 do(_Method, _State) ->
     ok.
 
-handle_message(force_event_refresh, State = #state{node = Node}) ->
+handle_message({force_event_refresh, Ref}, State = #state{node = Node}) ->
     rpc:call(Node, rabbit_event, notify,
-             [connection_created, connection_info(State)]),
+             [connection_created, connection_info(State), Ref]),
     {ok, State};
 handle_message(closing_timeout, State = #state{closing_reason = Reason}) ->
     {stop, {closing_timeout, Reason}, State};
@@ -91,8 +90,7 @@ terminate(_Reason, #state{node = Node}) ->
 i(type, _State) -> direct;
 i(pid,  _State) -> self();
 %% AMQP Params
-i(user, #state{params=#amqp_params_direct{username=#user{username=U}}}) -> U;
-i(user, #state{params=#amqp_params_direct{username=U}}) -> U;
+i(user,              #state{params = P}) -> P#amqp_params_direct.username;
 i(vhost,             #state{params = P}) -> P#amqp_params_direct.virtual_host;
 i(client_properties, #state{params = P}) ->
     P#amqp_params_direct.client_properties;
@@ -120,23 +118,19 @@ connect(Params = #amqp_params_direct{username     = Username,
                                      node         = Node,
                                      adapter_info = Info,
                                      virtual_host = VHost},
-        SIF, _ChMgr, State) ->
+        SIF, _TypeSup, State) ->
     State1 = State#state{node         = Node,
                          vhost        = VHost,
                          params       = Params,
                          adapter_info = ensure_adapter_info(Info)},
-    AuthToken = case Password of
-                    none -> Username;
-                    _    -> {Username, Password}
-                end,
     case rpc:call(Node, rabbit_direct, connect,
-                  [AuthToken, VHost, ?PROTOCOL, self(),
+                  [{Username, Password}, VHost, ?PROTOCOL, self(),
                    connection_info(State1)]) of
         {ok, {User, ServerProperties}} ->
-            {ok, Collector} = SIF(),
+            {ok, ChMgr, Collector} = SIF(i(name, State1)),
             State2 = State1#state{user      = User,
                                   collector = Collector},
-            {ok, {ServerProperties, 0, State2}};
+            {ok, {ServerProperties, 0, ChMgr, State2}};
         {error, _} = E ->
             E;
         {badrpc, nodedown} ->
@@ -164,7 +158,7 @@ socket_adapter_info(Sock, Protocol) ->
         end,
     Name = case rabbit_net:connection_string(Sock, inbound) of
                {ok, Res1} -> Res1;
-               _          -> unknown
+               _Error     -> "(unknown)"
            end,
     #amqp_adapter_info{protocol        = Protocol,
                        name            = list_to_binary(Name),
